@@ -163,8 +163,8 @@ def detect_trendline(df, window=2):
 
 def find_pivots(df):
     # Calculate differences between consecutive highs and lows
-    high_diffs = df['high'].diff()
-    low_diffs = df['low'].diff()
+    high_diffs = df['High'].diff()
+    low_diffs = df['Low'].diff()
 
     # Find higher high
     higher_high_mask = (high_diffs > 0) & (high_diffs.shift(-1) < 0)
