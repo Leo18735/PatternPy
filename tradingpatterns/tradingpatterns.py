@@ -132,8 +132,6 @@ def detect_double_top_bottom(df, window=3, threshold=0.05):
     return df, "double_pattern"
 
 def detect_trendline(df, window=2):
-    # Define the rolling window
-    roll_window = window
     # Create new columns for the linear regression slope and y-intercept
     df['slope'] = np.nan
     df['intercept'] = np.nan
@@ -153,8 +151,8 @@ def detect_trendline(df, window=2):
     mask_resistance = df['slope'] < 0
 
     # Create new columns for trendline support and resistance
-    df['support_trendline'] = 0
-    df['resistance_trendline'] = 0
+    df['support_trendline'] = 0.0
+    df['resistance_trendline'] = 0.0
 
     # Populate the new columns using the boolean masks
     df.loc[mask_support, 'support_trendline'] = df['Close'] * df['slope'] + df['intercept']
