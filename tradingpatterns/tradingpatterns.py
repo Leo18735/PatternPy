@@ -1,185 +1,103 @@
-import pandas as pd
 import numpy as np
 
 
-def detect_head_shoulder(df, window=3):
-# Define the rolling window
-    roll_window = window
-    # Create a rolling window for High and Low
-    df['high_roll_max'] = df['High'].rolling(window=roll_window).max()
-    df['low_roll_min'] = df['Low'].rolling(window=roll_window).min()
-    # Create a boolean mask for Head and Shoulder pattern
-    mask_head_shoulder = ((df['high_roll_max'] > df['High'].shift(1)) & (df['high_roll_max'] > df['High'].shift(-1)) & (df['High'] < df['High'].shift(1)) & (df['High'] < df['High'].shift(-1)))
-    # Create a boolean mask for Inverse Head and Shoulder pattern
-    mask_inv_head_shoulder = ((df['low_roll_min'] < df['Low'].shift(1)) & (df['low_roll_min'] < df['Low'].shift(-1)) & (df['Low'] > df['Low'].shift(1)) & (df['Low'] > df['Low'].shift(-1)))
-    # Create a new column for Head and Shoulder and its inverse pattern and populate it using the boolean masks
-    df['head_shoulder_pattern'] = 0
-    df.loc[mask_head_shoulder, 'head_shoulder_pattern'] = 1
-    df.loc[mask_inv_head_shoulder, 'head_shoulder_pattern'] = 2
-    return df, "head_shoulder_pattern"
-    # return not df['head_shoulder_pattern'].isna().any().item()
+def detect_head_shoulder(df):
+    mask_head_shoulder = ((df.loc[:, "high_roll_max"] > df.loc[:, "High"].shift(1)) & (df.loc[:, "high_roll_max"] > df.loc[:, "High"].shift(-1)) & (df.loc[:, "High"] < df.loc[:, "High"].shift(1)) & (df.loc[:, "High"] < df.loc[:, "High"].shift(-1)))
+    mask_inv_head_shoulder = ((df.loc[:, "low_roll_min"] < df.loc[:, "Low"].shift(1)) & (df.loc[:, "low_roll_min"] < df.loc[:, "Low"].shift(-1)) & (df.loc[:, "Low"] > df.loc[:, "Low"].shift(1)) & (df.loc[:, "Low"] > df.loc[:, "Low"].shift(-1)))
+    df.loc[:, "head_shoulder_pattern"] = 0
+    df.loc[mask_head_shoulder, "head_shoulder_pattern"] = 1
+    df.loc[mask_inv_head_shoulder, "head_shoulder_pattern"] = 2
+    return ["head_shoulder_pattern"]
 
-def detect_multiple_tops_bottoms(df, window=3):
-# Define the rolling window
-    roll_window = window
-    # Create a rolling window for High and Low
-    df['high_roll_max'] = df['High'].rolling(window=roll_window).max()
-    df['low_roll_min'] = df['Low'].rolling(window=roll_window).min()
-    df['close_roll_max'] = df['Close'].rolling(window=roll_window).max()
-    df['close_roll_min'] = df['Close'].rolling(window=roll_window).min()
-    # Create a boolean mask for multiple top pattern
-    mask_top = (df['high_roll_max'] >= df['High'].shift(1)) & (df['close_roll_max'] < df['Close'].shift(1))
-    # Create a boolean mask for multiple bottom pattern
-    mask_bottom = (df['low_roll_min'] <= df['Low'].shift(1)) & (df['close_roll_min'] > df['Close'].shift(1))
-    # Create a new column for multiple top bottom pattern and populate it using the boolean masks
-    df['multiple_top_bottom_pattern'] = 0
-    df.loc[mask_top, 'multiple_top_bottom_pattern'] = 1
-    df.loc[mask_bottom, 'multiple_top_bottom_pattern'] = 2
-    return df, "multiple_top_bottom_pattern"
+def detect_multiple_tops_bottoms(df, window: int):
+    df.loc[:, "close_roll_max"] = df.loc[:, "Close"].rolling(window=window).max()
+    df.loc[:, "close_roll_min"] = df.loc[:, "Close"].rolling(window=window).min()
+    mask_top = (df.loc[:, "high_roll_max"] >= df.loc[:, "High"].shift(1)) & (df.loc[:, "close_roll_max"] < df.loc[:, "Close"].shift(1))
+    mask_bottom = (df.loc[:, "low_roll_min"] <= df.loc[:, "Low"].shift(1)) & (df.loc[:, "close_roll_min"] > df.loc[:, "Close"].shift(1))
+    df.loc[:, "multiple_top_bottom_pattern"] = 0
+    df.loc[mask_top, "multiple_top_bottom_pattern"] = 1
+    df.loc[mask_bottom, "multiple_top_bottom_pattern"] = 2
+    return ["multiple_top_bottom_pattern"]
 
-def calculate_support_resistance(df, window=3):
-# Define the rolling window
-    roll_window = window
-    # Set the number of standard deviation
+def calculate_support_resistance(df, window: int):
     std_dev = 2
-    # Create a rolling window for High and Low
-    df['high_roll_max'] = df['High'].rolling(window=roll_window).max()
-    df['low_roll_min'] = df['Low'].rolling(window=roll_window).min()
-    # Calculate the mean and standard deviation for High and Low
-    mean_high = df['High'].rolling(window=roll_window).mean()
-    std_high = df['High'].rolling(window=roll_window).std()
-    mean_low = df['Low'].rolling(window=roll_window).mean()
-    std_low = df['Low'].rolling(window=roll_window).std()
-    # Create a new column for support and resistance
-    df['support'] = mean_low - std_dev * std_low
-    df['resistance'] = mean_high + std_dev * std_high
-    return df, ["support", "resistance"]
+    mean_high = df.loc[:, "High"].rolling(window=window).mean()
+    std_high = df.loc[:, "High"].rolling(window=window).std()
+    mean_low = df.loc[:, "Low"].rolling(window=window).mean()
+    std_low = df.loc[:, "Low"].rolling(window=window).std()
+    df.loc[:, "support"] = mean_low - std_dev * std_low
+    df.loc[:, "resistance"] = mean_high + std_dev * std_high
+    return ["support", "resistance"]
 
-def detect_triangle_pattern(df, window=3):
-    # Define the rolling window
-    roll_window = window
-    # Create a rolling window for High and Low
-    df['high_roll_max'] = df['High'].rolling(window=roll_window).max()
-    df['low_roll_min'] = df['Low'].rolling(window=roll_window).min()
-    # Create a boolean mask for ascending triangle pattern
-    mask_asc = (df['high_roll_max'] >= df['High'].shift(1)) & (df['low_roll_min'] <= df['Low'].shift(1)) & (df['Close'] > df['Close'].shift(1))
-    # Create a boolean mask for descending triangle pattern
-    mask_desc = (df['high_roll_max'] <= df['High'].shift(1)) & (df['low_roll_min'] >= df['Low'].shift(1)) & (df['Close'] < df['Close'].shift(1))
-    # Create a new column for triangle pattern and populate it using the boolean masks
-    df['triangle_pattern'] = 0
-    df.loc[mask_asc, 'triangle_pattern'] = 1
-    df.loc[mask_desc, 'triangle_pattern'] = 2
-    return df, "triangle_pattern"
+def detect_triangle_pattern(df):
+    mask_asc = (df.loc[:, "high_roll_max"] >= df.loc[:, "High"].shift(1)) & (df.loc[:, "low_roll_min"] <= df.loc[:, "Low"].shift(1)) & (df.loc[:, "Close"] > df.loc[:, "Close"].shift(1))
+    mask_desc = (df.loc[:, "high_roll_max"] <= df.loc[:, "High"].shift(1)) & (df.loc[:, "low_roll_min"] >= df.loc[:, "Low"].shift(1)) & (df.loc[:, "Close"] < df.loc[:, "Close"].shift(1))
+    df.loc[:, "triangle_pattern"] = 0
+    df.loc[mask_asc, "triangle_pattern"] = 1
+    df.loc[mask_desc, "triangle_pattern"] = 2
+    return ["triangle_pattern"]
 
-def detect_wedge(df, window=3):
-    # Define the rolling window
-    roll_window = window
-    # Create a rolling window for High and Low
-    df['high_roll_max'] = df['High'].rolling(window=roll_window).max()
-    df['low_roll_min'] = df['Low'].rolling(window=roll_window).min()
-    df['trend_high'] = df['High'].rolling(window=roll_window).apply(lambda x: 1 if (x.iloc[-1]-x.iloc[0])>0 else -1 if (x.iloc[-1]-x.iloc[0])<0 else 0)
-    df['trend_low'] = df['Low'].rolling(window=roll_window).apply(lambda x: 1 if (x.iloc[-1]-x.iloc[0])>0 else -1 if (x.iloc[-1]-x.iloc[0])<0 else 0)
-    # Create a boolean mask for Wedge Up pattern
-    mask_wedge_up = (df['high_roll_max'] >= df['High'].shift(1)) & (df['low_roll_min'] <= df['Low'].shift(1)) & (df['trend_high'] == 1) & (df['trend_low'] == 1)
-    # Create a boolean mask for Wedge Down pattern
-        # Create a boolean mask for Wedge Down pattern
-    mask_wedge_down = (df['high_roll_max'] <= df['High'].shift(1)) & (df['low_roll_min'] >= df['Low'].shift(1)) & (df['trend_high'] == -1) & (df['trend_low'] == -1)
-    # Create a new column for Wedge Up and Wedge Down pattern and populate it using the boolean masks
-    df['wedge_pattern'] = 0
-    df.loc[mask_wedge_up, 'wedge_pattern'] = 1
-    df.loc[mask_wedge_down, 'wedge_pattern'] = 2
-    return df, "wedge_pattern"
+def detect_wedge(df, window: int):
+    mask_wedge_up = (df.loc[:, "high_roll_max"] >= df.loc[:, "High"].shift(1)) & (df.loc[:, "low_roll_min"] <= df.loc[:, "Low"].shift(1)) & (df.loc[:, "trend_high"] == 1) & (df.loc[:, "trend_low"] == 1)
+    mask_wedge_down = (df.loc[:, "high_roll_max"] <= df.loc[:, "High"].shift(1)) & (df.loc[:, "low_roll_min"] >= df.loc[:, "Low"].shift(1)) & (df.loc[:, "trend_high"] == -1) & (df.loc[:, "trend_low"] == -1)
+    df.loc[:, "wedge_pattern"] = 0
+    df.loc[mask_wedge_up, "wedge_pattern"] = 1
+    df.loc[mask_wedge_down, "wedge_pattern"] = 2
+    return ["wedge_pattern"]
 
-def detect_channel(df, window=3):
-    # Define the rolling window
-    roll_window = window
-    # Define a factor to check for the range of channel
+def detect_channel(df, window: int):
     channel_range = 0.1
-    # Create a rolling window for High and Low
-    df['high_roll_max'] = df['High'].rolling(window=roll_window).max()
-    df['low_roll_min'] = df['Low'].rolling(window=roll_window).min()
-    df['trend_high'] = df['High'].rolling(window=roll_window).apply(lambda x: 1 if (x.iloc[-1]-x.iloc[0])>0 else -1 if (x.iloc[-1]-x.iloc[0])<0 else 0)
-    df['trend_low'] = df['Low'].rolling(window=roll_window).apply(lambda x: 1 if (x.iloc[-1]-x.iloc[0])>0 else -1 if (x.iloc[-1]-x.iloc[0])<0 else 0)
-    # Create a boolean mask for Channel Up pattern
-    mask_channel_up = (df['high_roll_max'] >= df['High'].shift(1)) & (df['low_roll_min'] <= df['Low'].shift(1)) & (df['high_roll_max'] - df['low_roll_min'] <= channel_range * (df['high_roll_max'] + df['low_roll_min'])/2) & (df['trend_high'] == 1) & (df['trend_low'] == 1)
-    # Create a boolean mask for Channel Down pattern
-    mask_channel_down = (df['high_roll_max'] <= df['High'].shift(1)) & (df['low_roll_min'] >= df['Low'].shift(1)) & (df['high_roll_max'] - df['low_roll_min'] <= channel_range * (df['high_roll_max'] + df['low_roll_min'])/2) & (df['trend_high'] == -1) & (df['trend_low'] == -1)
-    # Create a new column for Channel Up and Channel Down pattern and populate it using the boolean masks
-    df['channel_pattern'] = 0
-    df.loc[mask_channel_up, 'channel_pattern'] = 1
-    df.loc[mask_channel_down, 'channel_pattern'] = 2
-    return df, "channel_pattern"
+    mask_channel_up = (df.loc[:, "high_roll_max"] >= df.loc[:, "High"].shift(1)) & (df.loc[:, "low_roll_min"] <= df.loc[:, "Low"].shift(1)) & (df.loc[:, "high_roll_max"] - df.loc[:, "low_roll_min"] <= channel_range * (df.loc[:, "high_roll_max"] + df.loc[:, "low_roll_min"])/2) & (df.loc[:, "trend_high"] == 1) & (df.loc[:, "trend_low"] == 1)
+    mask_channel_down = (df.loc[:, "high_roll_max"] <= df.loc[:, "High"].shift(1)) & (df.loc[:, "low_roll_min"] >= df.loc[:, "Low"].shift(1)) & (df.loc[:, "high_roll_max"] - df.loc[:, "low_roll_min"] <= channel_range * (df.loc[:, "high_roll_max"] + df.loc[:, "low_roll_min"])/2) & (df.loc[:, "trend_high"] == -1) & (df.loc[:, "trend_low"] == -1)
+    df.loc[:, "channel_pattern"] = 0
+    df.loc[mask_channel_up, "channel_pattern"] = 1
+    df.loc[mask_channel_down, "channel_pattern"] = 2
+    return ["channel_pattern"]
 
-def detect_double_top_bottom(df, window=3, threshold=0.05):
-    # Define the rolling window
-    roll_window = window
-    # Define a threshold to check for the range of pattern
-    range_threshold = threshold
+def detect_double_top_bottom(df, threshold=0.05):
+    mask_double_top = (df.loc[:, "high_roll_max"] >= df.loc[:, "High"].shift(1)) & (df.loc[:, "high_roll_max"] >= df.loc[:, "High"].shift(-1)) & (df.loc[:, "High"] < df.loc[:, "High"].shift(1)) & (df.loc[:, "High"] < df.loc[:, "High"].shift(-1)) & ((df.loc[:, "High"].shift(1) - df.loc[:, "Low"].shift(1)) <= threshold * (df.loc[:, "High"].shift(1) + df.loc[:, "Low"].shift(1))/2) & ((df.loc[:, "High"].shift(-1) - df.loc[:, "Low"].shift(-1)) <= threshold * (df.loc[:, "High"].shift(-1) + df.loc[:, "Low"].shift(-1))/2)
+    mask_double_bottom = (df.loc[:, "low_roll_min"] <= df.loc[:, "Low"].shift(1)) & (df.loc[:, "low_roll_min"] <= df.loc[:, "Low"].shift(-1)) & (df.loc[:, "Low"] > df.loc[:, "Low"].shift(1)) & (df.loc[:, "Low"] > df.loc[:, "Low"].shift(-1)) & ((df.loc[:, "High"].shift(1) - df.loc[:, "Low"].shift(1)) <= threshold * (df.loc[:, "High"].shift(1) + df.loc[:, "Low"].shift(1))/2) & ((df.loc[:, "High"].shift(-1) - df.loc[:, "Low"].shift(-1)) <= threshold * (df.loc[:, "High"].shift(-1) + df.loc[:, "Low"].shift(-1))/2)
 
-    # Create a rolling window for High and Low
-    df['high_roll_max'] = df['High'].rolling(window=roll_window).max()
-    df['low_roll_min'] = df['Low'].rolling(window=roll_window).min()
-
-    # Create a boolean mask for Double Top pattern
-    mask_double_top = (df['high_roll_max'] >= df['High'].shift(1)) & (df['high_roll_max'] >= df['High'].shift(-1)) & (df['High'] < df['High'].shift(1)) & (df['High'] < df['High'].shift(-1)) & ((df['High'].shift(1) - df['Low'].shift(1)) <= range_threshold * (df['High'].shift(1) + df['Low'].shift(1))/2) & ((df['High'].shift(-1) - df['Low'].shift(-1)) <= range_threshold * (df['High'].shift(-1) + df['Low'].shift(-1))/2)
-    # Create a boolean mask for Double Bottom pattern
-    mask_double_bottom = (df['low_roll_min'] <= df['Low'].shift(1)) & (df['low_roll_min'] <= df['Low'].shift(-1)) & (df['Low'] > df['Low'].shift(1)) & (df['Low'] > df['Low'].shift(-1)) & ((df['High'].shift(1) - df['Low'].shift(1)) <= range_threshold * (df['High'].shift(1) + df['Low'].shift(1))/2) & ((df['High'].shift(-1) - df['Low'].shift(-1)) <= range_threshold * (df['High'].shift(-1) + df['Low'].shift(-1))/2)
-
-    # Create a new column for Double Top and Double Bottom pattern and populate it using the boolean masks
-    df['double_pattern'] = 0
-    df.loc[mask_double_top, 'double_pattern'] = 1
-    df.loc[mask_double_bottom, 'double_pattern'] = 2
-    return df, "double_pattern"
+    df.loc[:, "double_pattern"] = 0
+    df.loc[mask_double_top, "double_pattern"] = 1
+    df.loc[mask_double_bottom, "double_pattern"] = 2
+    return ["double_pattern"]
 
 def detect_trendline(df, window=2):
-    # Create new columns for the linear regression slope and y-intercept
-    df['slope'] = np.nan
-    df['intercept'] = np.nan
+    df.loc[:, "slope"] = np.nan
+    df.loc[:, "intercept"] = np.nan
 
     for i in range(window, len(df)):
         x = np.array(range(i-window, i))
-        y = df['Close'][i-window:i]
+        y = df.loc[:, "Close"][i-window:i]
         A = np.vstack([x, np.ones(len(x))]).T
         m, c = np.linalg.lstsq(A, y, rcond=None)[0]
-        df.at[df.index[i], 'slope'] = m
-        df.at[df.index[i], 'intercept'] = c
+        df.at[df.index[i], "slope"] = m
+        df.at[df.index[i], "intercept"] = c
 
-    # Create a boolean mask for trendline support
-    mask_support = df['slope'] > 0
+    mask_support = df.loc[:, "slope"] > 0
 
-    # Create a boolean mask for trendline resistance
-    mask_resistance = df['slope'] < 0
+    mask_resistance = df.loc[:, "slope"] < 0
 
-    # Create new columns for trendline support and resistance
-    df['support_trendline'] = 0.0
-    df['resistance_trendline'] = 0.0
+    df.loc[:, "support_trendline"] = 0.0
+    df.loc[:, "resistance_trendline"] = 0.0
 
-    # Populate the new columns using the boolean masks
-    df.loc[mask_support, 'support_trendline'] = df['Close'] * df['slope'] + df['intercept']
-    df.loc[mask_resistance, 'resistance_trendline'] = df['Close'] * df['slope'] + df['intercept']
-    return df, ["support_trendline", "resistance_trendline"]
+    df.loc[mask_support, "support_trendline"] = df.loc[:, "Close"] * df.loc[:, "slope"] + df.loc[:, "intercept"]
+    df.loc[mask_resistance, "resistance_trendline"] = df.loc[:, "Close"] * df.loc[:, "slope"] + df.loc[:, "intercept"]
+    return ["support_trendline", "resistance_trendline"]
 
 def find_pivots(df):
-    # Calculate differences between consecutive highs and lows
-    high_diffs = df['High'].diff()
-    low_diffs = df['Low'].diff()
+    high_diffs = df.loc[:, "High"].diff()
+    low_diffs = df.loc[:, "Low"].diff()
 
-    # Find higher high
     higher_high_mask = (high_diffs > 0) & (high_diffs.shift(-1) < 0)
-    
-    # Find lower low
     lower_low_mask = (low_diffs < 0) & (low_diffs.shift(-1) > 0)
-
-    # Find lower high
     lower_high_mask = (high_diffs < 0) & (high_diffs.shift(-1) > 0)
-
-    # Find higher low
     higher_low_mask = (low_diffs > 0) & (low_diffs.shift(-1) < 0)
 
-    # Create signals column
-    df['signal'] = 0
-    df.loc[higher_high_mask, 'signal'] = 1
-    df.loc[lower_low_mask, 'signal'] = 2
-    df.loc[lower_high_mask, 'signal'] = 3
-    df.loc[higher_low_mask, 'signal'] = 4
-    return df, "signal"
+    df.loc[:, "signal"] = 0
+    df.loc[higher_high_mask, "signal"] = 1
+    df.loc[lower_low_mask, "signal"] = 2
+    df.loc[lower_high_mask, "signal"] = 3
+    df.loc[higher_low_mask, "signal"] = 4
+    return ["signal"]
