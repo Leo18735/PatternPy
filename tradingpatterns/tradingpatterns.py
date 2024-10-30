@@ -9,6 +9,7 @@ def detect_head_shoulder(df):
     df.loc[mask_inv_head_shoulder, "head_shoulder_pattern"] = 2
     return ["head_shoulder_pattern"]
 
+
 def detect_multiple_tops_bottoms(df, window: int):
     df.loc[:, "close_roll_max"] = df.loc[:, "Close"].rolling(window=window).max()
     df.loc[:, "close_roll_min"] = df.loc[:, "Close"].rolling(window=window).min()
@@ -18,6 +19,7 @@ def detect_multiple_tops_bottoms(df, window: int):
     df.loc[mask_top, "multiple_top_bottom_pattern"] = 1
     df.loc[mask_bottom, "multiple_top_bottom_pattern"] = 2
     return ["multiple_top_bottom_pattern"]
+
 
 def calculate_support_resistance(df, window: int):
     std_dev = 2
@@ -29,6 +31,7 @@ def calculate_support_resistance(df, window: int):
     df.loc[:, "resistance"] = mean_high + std_dev * std_high
     return ["support", "resistance"]
 
+
 def detect_triangle_pattern(df):
     mask_asc = (df.loc[:, "high_roll_max"] >= df.loc[:, "High"].shift(1)) & (df.loc[:, "low_roll_min"] <= df.loc[:, "Low"].shift(1)) & (df.loc[:, "Close"] > df.loc[:, "Close"].shift(1))
     mask_desc = (df.loc[:, "high_roll_max"] <= df.loc[:, "High"].shift(1)) & (df.loc[:, "low_roll_min"] >= df.loc[:, "Low"].shift(1)) & (df.loc[:, "Close"] < df.loc[:, "Close"].shift(1))
@@ -36,6 +39,7 @@ def detect_triangle_pattern(df):
     df.loc[mask_asc, "triangle_pattern"] = 1
     df.loc[mask_desc, "triangle_pattern"] = 2
     return ["triangle_pattern"]
+
 
 def detect_wedge(df, window: int):
     mask_wedge_up = (df.loc[:, "high_roll_max"] >= df.loc[:, "High"].shift(1)) & (df.loc[:, "low_roll_min"] <= df.loc[:, "Low"].shift(1)) & (df.loc[:, "trend_high"] == 1) & (df.loc[:, "trend_low"] == 1)
